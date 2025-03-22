@@ -6,13 +6,19 @@ input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
 genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome"
 
+rule all:
+   expand("results/fastqc/{sample}_fastqc.html",sample=samples),
+
 rule fastqc:
    input:
       fq = "{input_path}/{sample}.fastq.gz",
    output:
       html = "results/fastqc/{sample}_fastqc.html",
+      zip = "results/fastqc/{sample}_fastqc.zip",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
       """
-      fastqc --outdir results/fastqc {input.fq}
+      seqtk sample -s100 {input.fq} 20000 > {input.fq}.fraction 
+      fastqc --outdir results/fastqc {input.fq}.fraction
       """
 
