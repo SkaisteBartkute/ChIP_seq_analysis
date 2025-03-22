@@ -1,0 +1,18 @@
+import os
+
+samples = ["SRR8134484", "SRR8134485"]
+
+input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
+
+genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome"
+
+rule fastqc:
+   input:
+      fq = "{input_path}/{sample}.fastq.gz",
+   output:
+      html = "results/fastqc/{sample}_fastqc.html",
+   shell:
+      """
+      fastqc --outdir results/fastqc {input.fq}
+      """
+
