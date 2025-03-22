@@ -12,18 +12,42 @@ rule all:
       expand("results/fraction/{sample}.fastq",sample=samples),
       expand("results/fastqc/{sample}_fastqc.html",sample=samples),
       expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
+      expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
+      expand("results/fastp/{sample}_fastp.html",sample=samples),
+      expand("results/fastp/{sample}_fastp.json",sample=samples),
+      expand("results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
+      expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
 
 rule fastqc:
    input:
       fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
+      fq_trim = "results/trimmed/{sample}_trimmed.fastq",
    output:
       fqfrac = "results/fraction/{sample}.fastq",
       html = "results/fastqc/{sample}_fastqc.html",
       zip = "results/fastqc/{sample}_fastqc.zip",
+      html_trim = "results/fastqc/{sample}_trimmed_fastqc.html",
+      zip_trim = "results/fastqc/{sample}_trimmed_fastqc.zip",
    conda:"envs/preprocess_chipseq.yaml"
    shell:
       """
       seqtk sample -s100 {input.fq} 20000 > {output.fqfrac} 
-      fastqc --outdir results/fastqc {output.fqfrac}
+      fastqc --outdir results/fastqc {output.fqfrac} {input.fq_trim}
       """
 
+rule fastp:
+   input:
+      fq = "results/fraction/{sample}.fastq",
+   output:
+      trimmed = "results/fastp/{sample}_trimmed.fastq",
+      html = "results/fastp/{sample}_fastp.html",
+      json = "results/fastp/{sample}_fastp.json",
+   conda:"envs/preprocess_chipseq.yaml"
+   shell:
+      """
+      fastp -i {input.fq} \
+      -q 25 -l 20 \
+      -o {output.trimmed} \
+      -h {output.html} \
+      -j {output.json}
+      """
