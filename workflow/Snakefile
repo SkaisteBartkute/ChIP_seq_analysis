@@ -5,7 +5,7 @@ samples = ["SRR8134484", "SRR8134485"]
 
 input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
-genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome"
+genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome/human_genome"
 
 rule all:
    input:
@@ -17,6 +17,8 @@ rule all:
       expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
       expand("results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
       expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
+      expand("results/bwa/{sample}.sam",sample=samples),
+      expand("results/bwa/{sample}.bam",sample=samples),
 
 rule fraction:
    input:
@@ -59,3 +61,16 @@ rule fastqc:
       """
       fastqc --outdir results/fastqc {input.fq} {input.fq_trim}
       """
+
+rule bwa:
+   input:
+     fq = "results/fraction/{sample}.fastq",
+   output:
+     sam = "results/bwa/{sample}.sam",
+     bam = "results/bwa/{sample}.bam",
+   shell:
+     """
+     bwa mem -M {genome_index_dir} {input.fq} > {output.sam}
+     samtools view -b {output.sam} | samtools sort -o {output.bam}
+     samtools index {output.bam}
+     """
