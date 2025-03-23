@@ -19,6 +19,7 @@ rule all:
       expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
       expand("results/bwa/{sample}.sam",sample=samples),
       expand("results/bwa/{sample}.bam",sample=samples),
+      expand("results/bwa/{sample}_rmdup.bam",sample=samples),
 
 rule fraction:
    input:
@@ -68,9 +69,11 @@ rule bwa:
    output:
      sam = "results/bwa/{sample}.sam",
      bam = "results/bwa/{sample}.bam",
+     bam_rmdup = "results/bwa/{sample}_rmdup.bam",
    shell:
      """
      bwa mem -M {genome_index_dir} {input.fq} > {output.sam}
-     samtools view -b {output.sam} | samtools sort -o {output.bam}
-     samtools index {output.bam}
+     samtools view -F 0x04 -q 30 -b {output.sam} | samtools sort -o {output.bam}
+     samtools markdup -r -s {output.bam} {output.bam_rmdup}
+     samtools index {output.bam_rmdup}
      """
