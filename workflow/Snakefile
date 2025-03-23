@@ -21,6 +21,7 @@ rule all:
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
       "results/tagDirectory/tagInfo.txt",
+      "results/tagDirectory/superEnhancers.txt",
 
 rule fraction:
    input:
@@ -88,3 +89,14 @@ rule makeTagDirectory:
      """
      makeTagDirectory results/tagDirectory {input}
      """
+
+rule findPeaks:
+  input:
+    "results/tagDirectory",
+  output:
+    "results/tagDirectory/superEnhancers.txt",
+  shell:
+    """
+    findPeaks {input} -style super -L 0 -superSlope -1000 -o auto
+    """
+
