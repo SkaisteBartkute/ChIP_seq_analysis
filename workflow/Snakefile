@@ -20,6 +20,7 @@ rule all:
       expand("results/bwa/{sample}.sam",sample=samples),
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+      "results/tagDirectory/tagInfo.txt",
 
 rule fraction:
    input:
@@ -76,4 +77,14 @@ rule bwa:
      samtools view -F 0x04 -q 30 -b {output.sam} | samtools sort -o {output.bam}
      samtools markdup -r -s {output.bam} {output.bam_rmdup}
      samtools index {output.bam_rmdup}
+     """
+
+rule makeTagDirectory:
+   input:
+     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+   output:
+     "results/tagDirectory/tagInfo.txt",
+   shell:
+     """
+     makeTagDirectory results/tagDirectory {input}
      """
