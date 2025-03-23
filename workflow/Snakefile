@@ -10,29 +10,22 @@ genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome"
 rule all:
    input:
       expand("results/fraction/{sample}.fastq",sample=samples),
-      expand("results/fastqc/{sample}_fastqc.html",sample=samples),
-      expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
       expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
       expand("results/fastp/{sample}_fastp.html",sample=samples),
       expand("results/fastp/{sample}_fastp.json",sample=samples),
+      expand("results/fastqc/{sample}_fastqc.html",sample=samples),
+      expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
       expand("results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
       expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
 
-rule fastqc:
+rule fraction:
    input:
       fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
-      fq_trim = "results/trimmed/{sample}_trimmed.fastq",
    output:
       fqfrac = "results/fraction/{sample}.fastq",
-      html = "results/fastqc/{sample}_fastqc.html",
-      zip = "results/fastqc/{sample}_fastqc.zip",
-      html_trim = "results/fastqc/{sample}_trimmed_fastqc.html",
-      zip_trim = "results/fastqc/{sample}_trimmed_fastqc.zip",
-   conda:"envs/preprocess_chipseq.yaml"
    shell:
       """
-      seqtk sample -s100 {input.fq} 20000 > {output.fqfrac} 
-      fastqc --outdir results/fastqc {output.fqfrac} {input.fq_trim}
+      seqtk sample -s100 {input.fq} 20000 > {output.fqfrac}
       """
 
 rule fastp:
@@ -50,4 +43,19 @@ rule fastp:
       -o {output.trimmed} \
       -h {output.html} \
       -j {output.json}
+      """
+
+rule fastqc:
+   input:
+      fq = "results/fraction/{sample}.fastq",
+      fq_trim = "results/fastp/{sample}_trimmed.fastq",
+   output:
+      html = "results/fastqc/{sample}_fastqc.html",
+      zip = "results/fastqc/{sample}_fastqc.zip",
+      html_trim = "results/fastqc/{sample}_trimmed_fastqc.html",
+      zip_trim = "results/fastqc/{sample}_trimmed_fastqc.zip",
+   conda:"envs/preprocess_chipseq.yaml"
+   shell:
+      """
+      fastqc --outdir results/fastqc {input.fq} {input.fq_trim}
       """
