@@ -20,6 +20,7 @@ rule all:
       expand("results/bwa/{sample}.sam",sample=samples),
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+      "results/merged/merged.bam",
       "results/tagDirectory/tagInfo.txt",
       "results/tagDirectory/superEnhancers.txt",
 
@@ -77,12 +78,22 @@ rule bwa:
      bwa mem -M {genome_index_dir} {input.fq} > {output.sam}
      samtools view -F 0x04 -q 30 -b {output.sam} | samtools sort -o {output.bam}
      samtools markdup -r -s {output.bam} {output.bam_rmdup}
-     samtools index {output.bam_rmdup}
+     """
+
+rule merge_bam:
+   input:
+     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+   output:
+     "results/merged/merged.bam",
+   shell:
+     """
+     samtools merge {output} {input}
+     samtools index {output}
      """
 
 rule makeTagDirectory:
    input:
-     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+     "results/bwa/merged.bam"
    output:
      "results/tagDirectory/tagInfo.txt",
    shell:
@@ -99,4 +110,3 @@ rule findPeaks:
     """
     findPeaks {input} -style super -L 0 -superSlope -1000 -o auto
     """
-
