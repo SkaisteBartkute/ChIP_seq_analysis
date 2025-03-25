@@ -23,6 +23,7 @@ rule all:
       expand("results/bwa/{sample}.sam",sample=samples),
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+      expand("results/bedGraph/{sample}.bedGraph",sample=samples),
       "results/merged/merged.bam",
       expand("results/{sample}_tagDirectory",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
@@ -87,6 +88,17 @@ rule bwa:
      bwa samse {genome_index_dir} {output.sai} {input.fq} > {output.sam}
      samtools view -F 0x04 -q 30 -b {output.sam} | samtools sort -o {output.bam}
      samtools markdup -r -s {output.bam} {output.bam_rmdup}
+     """
+
+rule bedGraph:
+   input:
+     bam = "results/bwa/{sample}_rmdup.bam",
+   output:
+     bedGraph = "results/bedGraph/{sample}.bedGraph",
+   conda: "envs/preprocess_chipseq.yaml"
+   shell:
+     """
+     bamCoverage --bam {input.bam} --outFileFormat bedGraph -o {output.bedGraph}
      """
 
 rule merge_bam:
