@@ -1,7 +1,7 @@
 import glob
 import os
 
-samples = ["SRR8134484", "SRR8134485","SRR8134486","SRR8134487","SRR8134488","SRR8134489"]
+samples = ["SRR8134484", "SRR8134485"]
 
 input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
@@ -11,30 +11,29 @@ adapter_path = "/scratch/lustre/home/skba0280/references/adapters/adapters.fasta
 
 rule all:
    input:
-      expand("results/fraction/{sample}.fastq",sample=samples),
-      expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
-      expand("results/fastp/{sample}_fastp.html",sample=samples),
-      expand("results/fastp/{sample}_fastp.json",sample=samples),
-      expand("results/fastqc/{sample}_fastqc.html",sample=samples),
-      expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
-      expand("results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
-      expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
-      expand("results/bwa/{sample}.sai",sample=samples),
-      expand("results/bwa/{sample}.sam",sample=samples),
-      expand("results/bwa/{sample}.bam",sample=samples),
-      expand("results/bwa/{sample}_rmdup.bam",sample=samples),
-      expand("results/bedGraph/{sample}.bedGraph",sample=samples),
-      "results/merged/merged.bam",
-      expand("results/{sample}_tagDirectory",sample=samples),
-      expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
-      expand("results/{sample}_tagDirectory/peaks.txt",sample=samples),
-      expand("results/{sample}_tagDirectory/annotatedPeaks.txt",sample=samples),
+      expand("temporary1/results/fraction/{sample}.fastq",sample=samples),
+      expand("temporary1/results/fastp/{sample}_trimmed.fastq",sample=samples),
+      expand("temporary1/results/fastp/{sample}_fastp.html",sample=samples),
+      expand("temporary1/results/fastp/{sample}_fastp.json",sample=samples),
+      expand("temporary1/results/fastqc/{sample}_fastqc.html",sample=samples),
+      expand("temporary1/results/fastqc/{sample}_fastqc.zip",sample=samples),
+      expand("temporary1/results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
+      expand("temporary1/results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
+      expand("temporary1/results/bwa/{sample}.sai",sample=samples),
+      expand("temporary1/results/bwa/{sample}.sam",sample=samples),
+      expand("temporary1/results/bwa/{sample}.bam",sample=samples),
+      expand("temporary1/results/bwa/{sample}_rmdup.bam",sample=samples),
+      expand("temporary1/results/bedGraph/{sample}.bedgraph",sample=samples),
+      "temporary1/results/merged/merged.bam",
+      expand("temporary1/results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
+      expand("temporary1/results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
+      expand("temporary1/results/{sample}_tagDirectory/regions.txt",sample=samples),      
 
 rule fraction:
    input:
       fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
    output:
-      fqfrac = "results/fraction/{sample}.fastq",
+      fqfrac = "temporary1/results/fraction/{sample}.fastq",
    shell:
       """
       seqtk sample -s100 {input.fq} 20000 > {output.fqfrac}
@@ -42,15 +41,17 @@ rule fraction:
 
 rule fastp:
    input:
-      fq = "results/fraction/{sample}.fastq",
+      fq = "temporary1/results/fraction/{sample}.fastq",
    output:
-      trimmed = "results/fastp/{sample}_trimmed.fastq",
-      html = "results/fastp/{sample}_fastp.html",
-      json = "results/fastp/{sample}_fastp.json",
+      trimmed = "temporary1/results/fastp/{sample}_trimmed.fastq",
+      html = "temporary1/results/fastp/{sample}_fastp.html",
+      json = "temporary1/results/fastp/{sample}_fastp.json",
    conda:"envs/preprocess_chipseq.yaml"
+   threads:4
    shell:
       """
       fastp -i {input.fq} \
+      --thread {threads} \
       --adapter_fasta {adapter_path} \
       -q 25 -l 20 \
       -o {output.trimmed} \
@@ -60,80 +61,84 @@ rule fastp:
 
 rule fastqc:
    input:
-      fq = "results/fraction/{sample}.fastq",
-      fq_trim = "results/fastp/{sample}_trimmed.fastq",
+      fq = "temporary1/results/fraction/{sample}.fastq",
+      fq_trim = "temporary1/results/fastp/{sample}_trimmed.fastq",
    output:
-      html = "results/fastqc/{sample}_fastqc.html",
-      zip = "results/fastqc/{sample}_fastqc.zip",
-      html_trim = "results/fastqc/{sample}_trimmed_fastqc.html",
-      zip_trim = "results/fastqc/{sample}_trimmed_fastqc.zip",
+      html = "temporary1/results/fastqc/{sample}_fastqc.html",
+      zip = "temporary1/results/fastqc/{sample}_fastqc.zip",
+      html_trim = "temporary1/results/fastqc/{sample}_trimmed_fastqc.html",
+      zip_trim = "temporary1/results/fastqc/{sample}_trimmed_fastqc.zip",
    conda:"envs/preprocess_chipseq.yaml"
+   threads:4
    shell:
       """
-      fastqc --outdir results/fastqc {input.fq} {input.fq_trim}
+      fastqc -t {threads} --outdir temporary1/results/fastqc {input.fq} {input.fq_trim}
       """
 
 rule bwa:
    input:
-     fq = "results/fraction/{sample}.fastq",
+     fq = "temporary1/results/fraction/{sample}.fastq",
    output:
-     sai = "results/bwa/{sample}.sai",
-     sam = "results/bwa/{sample}.sam",
-     bam = "results/bwa/{sample}.bam",
-     bam_rmdup = "results/bwa/{sample}_rmdup.bam",
+     sai = "temporary1/results/bwa/{sample}.sai",
+     sam = "temporary1/results/bwa/{sample}.sam",
+     bam = "temporary1/results/bwa/{sample}.bam",
+     bam_rmdup = "temporary1/results/bwa/{sample}_rmdup.bam",
    conda:"envs/preprocess_chipseq.yaml"
+   threads:4
    shell:
      """
-     bwa aln {genome_index_dir} {input.fq} > {output.sai}
+     bwa aln -t {threads} {genome_index_dir} {input.fq} > {output.sai}
      bwa samse {genome_index_dir} {output.sai} {input.fq} > {output.sam}
-     samtools view -F 0x04 -q 30 -b {output.sam} | samtools sort -o {output.bam}
-     samtools markdup -r -s {output.bam} {output.bam_rmdup}
+     samtools view -@ {threads} -F 0x04 -q 30 -b {output.sam} | samtools sort -@ {threads} -o {output.bam}
+     samtools markdup -@ {threads} -r -s {output.bam} {output.bam_rmdup}
      """
 
 rule bedGraph:
    input:
-     bam = "results/bwa/{sample}_rmdup.bam",
+     bam = "temporary1/results/bwa/{sample}_rmdup.bam",
    output:
-     bedGraph = "results/bedGraph/{sample}.bedGraph",
+     bedGraph = "temporary1/results/bedGraph/{sample}.bedgraph",
    conda: "envs/preprocess_chipseq.yaml"
+   threads:4
    shell:
      """
-     bamCoverage --bam {input.bam} --outFileFormat bedGraph -o {output.bedGraph}
+     samtools index -@ {threads} {input.bam}
+     bamCoverage --bam {input.bam} --outFileFormat bedgraph -o {output.bedGraph}
      """
 
 rule merge_bam:
    input:
-     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+     expand("temporary1/results/bwa/{sample}_rmdup.bam",sample=samples),
    output:
-     "results/merged/merged.bam",
+     "temporary1/results/merged/merged.bam",
    conda:"envs/preprocess_chipseq.yaml"
+   threads:4
    shell:
      """
-     samtools merge {output} {input}
-     samtools index {output}
+     samtools merge -@ {threads} {output} {input}
+     samtools index -@ {threads} {output}
      """
 
 rule makeTagDirectory:
    input:
-     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+     bam = "temporary1/results/bwa/{sample}_rmdup.bam",
    output:
-     expand("results/{sample}_tagDirectory",sample=samples),
+     dir = "temporary1/results/{sample}_tagDirectory/tagInfo.txt",
    conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
-     makeTagDirectory {output} {input}
+     makeTagDirectory temporary1/results/{wildcards.sample}_tagDirectory {input.bam}
      """
 
 rule findPeaks:
   input:
-    expand("results/{sample}_tagDirectory",sample=samples),
+    tag = "temporary1/results/{sample}_tagDirectory/tagInfo.txt",
   output:
-    enh = "results/{sample}_tagDirectory/superEnhancers.txt",
-    peaks = "results/{sample}_tagDirectory/regions.txt",
-    annotated = "results/{sample}_tagDirectory/annotatedPeaks.txt",
+    enh = "temporary1/results/{sample}_tagDirectory/superEnhancers.txt",
+    peaks = "temporary1/results/{sample}_tagDirectory/regions.txt",
   conda:"envs/preprocess_chipseq.yaml"
   shell:
     """
-    findPeaks {input} -style histone -nfr -o auto 
-    findPeaks {input} -style super -L 0 -superSlope -1000 -o auto 
+    findPeaks temporary1/results/{wildcards.sample}_tagDirectory -style histone -nfr -o auto 
+    findPeaks temporary1/results/{wildcards.sample}_tagDirectory -style super -L 0 -superSlope -1000 -o auto 
     """
