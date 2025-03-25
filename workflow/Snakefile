@@ -1,7 +1,7 @@
 import glob
 import os
 
-samples = ["SRR8134484", "SRR8134485"]
+samples = ["SRR8134484","SRR8134485","SRR8134486","SRR8134487","SRR8134488","SRR8134489"]
 
 input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
@@ -11,48 +11,36 @@ adapter_path = "/scratch/lustre/home/skba0280/references/adapters/adapters.fasta
 
 rule all:
    input:
-      expand("temporary1/results/fraction/{sample}.fastq",sample=samples),
-      expand("temporary1/results/fastp/{sample}_trimmed.fastq",sample=samples),
-      expand("temporary1/results/fastp/{sample}_fastp.html",sample=samples),
-      expand("temporary1/results/fastp/{sample}_fastp.json",sample=samples),
-      expand("temporary1/results/fastqc/{sample}_fastqc.html",sample=samples),
-      expand("temporary1/results/fastqc/{sample}_fastqc.zip",sample=samples),
-      expand("temporary1/results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
-      expand("temporary1/results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
-      expand("temporary1/results/bwa/{sample}.sai",sample=samples),
-      expand("temporary1/results/bwa/{sample}.sam",sample=samples),
-      expand("temporary1/results/bwa/{sample}.bam",sample=samples),
-      expand("temporary1/results/bwa/{sample}_rmdup.bam",sample=samples),
-      expand("temporary1/results/bedGraph/{sample}.bedgraph",sample=samples),
-      "temporary1/results/merged/merged.bam",
-      expand("temporary1/results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
-      expand("temporary1/results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
-      expand("temporary1/results/{sample}_tagDirectory/regions.txt",sample=samples),      
-
-rule fraction:
-   input:
-      fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
-   output:
-      fqfrac = "temporary1/results/fraction/{sample}.fastq",
-   shell:
-      """
-      seqtk sample -s100 {input.fq} 20000 > {output.fqfrac}
-      """
+      expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
+      expand("results/fastp/{sample}_fastp.html",sample=samples),
+      expand("results/fastp/{sample}_fastp.json",sample=samples),
+      expand("results/fastqc/{sample}_fastqc.html",sample=samples),
+      expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
+      expand("results/fastqc/{sample}_trimmed_fastqc.html",sample=samples),
+      expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
+      expand("results/bwa/{sample}.sai",sample=samples),
+      expand("results/bwa/{sample}.sam",sample=samples),
+      expand("results/bwa/{sample}.bam",sample=samples),
+      expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+      expand("results/bedGraph/{sample}.bedgraph",sample=samples),
+      "results/merged/merged.bam",
+      expand("results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/regions.txt",sample=samples),      
 
 rule fastp:
    input:
-      fq = "temporary1/results/fraction/{sample}.fastq",
+      fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
    output:
-      trimmed = "temporary1/results/fastp/{sample}_trimmed.fastq",
-      html = "temporary1/results/fastp/{sample}_fastp.html",
-      json = "temporary1/results/fastp/{sample}_fastp.json",
+      trimmed = "results/fastp/{sample}_trimmed.fastq",
+      html = "results/fastp/{sample}_fastp.html",
+      json = "results/fastp/{sample}_fastp.json",
    conda:"envs/preprocess_chipseq.yaml"
    threads:4
    shell:
       """
       fastp -i {input.fq} \
       --thread {threads} \
-      --adapter_fasta {adapter_path} \
       -q 25 -l 20 \
       -o {output.trimmed} \
       -h {output.html} \
@@ -61,28 +49,28 @@ rule fastp:
 
 rule fastqc:
    input:
-      fq = "temporary1/results/fraction/{sample}.fastq",
-      fq_trim = "temporary1/results/fastp/{sample}_trimmed.fastq",
+      fq = lambda wildcards:f"{input_path}/{wildcards.sample}.fastq.gz",
+      fq_trim = "results/fastp/{sample}_trimmed.fastq",
    output:
-      html = "temporary1/results/fastqc/{sample}_fastqc.html",
-      zip = "temporary1/results/fastqc/{sample}_fastqc.zip",
-      html_trim = "temporary1/results/fastqc/{sample}_trimmed_fastqc.html",
-      zip_trim = "temporary1/results/fastqc/{sample}_trimmed_fastqc.zip",
+      html = "results/fastqc/{sample}_fastqc.html",
+      zip = "results/fastqc/{sample}_fastqc.zip",
+      html_trim = "results/fastqc/{sample}_trimmed_fastqc.html",
+      zip_trim = "results/fastqc/{sample}_trimmed_fastqc.zip",
    conda:"envs/preprocess_chipseq.yaml"
    threads:4
    shell:
       """
-      fastqc -t {threads} --outdir temporary1/results/fastqc {input.fq} {input.fq_trim}
+      fastqc -t {threads} --outdir results/fastqc {input.fq} {input.fq_trim}
       """
 
 rule bwa:
    input:
-     fq = "temporary1/results/fraction/{sample}.fastq",
+     fq = "results/fastp/{sample}_trimmed.fastq",
    output:
-     sai = "temporary1/results/bwa/{sample}.sai",
-     sam = "temporary1/results/bwa/{sample}.sam",
-     bam = "temporary1/results/bwa/{sample}.bam",
-     bam_rmdup = "temporary1/results/bwa/{sample}_rmdup.bam",
+     sai = "results/bwa/{sample}.sai",
+     sam = "results/bwa/{sample}.sam",
+     bam = "results/bwa/{sample}.bam",
+     bam_rmdup = "results/bwa/{sample}_rmdup.bam",
    conda:"envs/preprocess_chipseq.yaml"
    threads:4
    shell:
@@ -95,9 +83,9 @@ rule bwa:
 
 rule bedGraph:
    input:
-     bam = "temporary1/results/bwa/{sample}_rmdup.bam",
+     bam = "results/bwa/{sample}_rmdup.bam",
    output:
-     bedGraph = "temporary1/results/bedGraph/{sample}.bedgraph",
+     bedGraph = "results/bedGraph/{sample}.bedgraph",
    conda: "envs/preprocess_chipseq.yaml"
    threads:4
    shell:
@@ -108,9 +96,9 @@ rule bedGraph:
 
 rule merge_bam:
    input:
-     expand("temporary1/results/bwa/{sample}_rmdup.bam",sample=samples),
+     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
    output:
-     "temporary1/results/merged/merged.bam",
+     "results/merged/merged.bam",
    conda:"envs/preprocess_chipseq.yaml"
    threads:4
    shell:
@@ -121,24 +109,24 @@ rule merge_bam:
 
 rule makeTagDirectory:
    input:
-     bam = "temporary1/results/bwa/{sample}_rmdup.bam",
+     bam = "results/bwa/{sample}_rmdup.bam",
    output:
-     dir = "temporary1/results/{sample}_tagDirectory/tagInfo.txt",
+     txt = "results/{sample}_tagDirectory/tagInfo.txt",
    conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
-     makeTagDirectory temporary1/results/{wildcards.sample}_tagDirectory {input.bam}
+     makeTagDirectory results/{wildcards.sample}_tagDirectory {input.bam}
      """
 
 rule findPeaks:
   input:
-    tag = "temporary1/results/{sample}_tagDirectory/tagInfo.txt",
+    tag = "results/{sample}_tagDirectory/tagInfo.txt",
   output:
-    enh = "temporary1/results/{sample}_tagDirectory/superEnhancers.txt",
-    peaks = "temporary1/results/{sample}_tagDirectory/regions.txt",
+    enh = "results/{sample}_tagDirectory/superEnhancers.txt",
+    peaks = "results/{sample}_tagDirectory/regions.txt",
   conda:"envs/preprocess_chipseq.yaml"
   shell:
     """
-    findPeaks temporary1/results/{wildcards.sample}_tagDirectory -style histone -nfr -o auto 
-    findPeaks temporary1/results/{wildcards.sample}_tagDirectory -style super -L 0 -superSlope -1000 -o auto 
+    findPeaks results/{wildcards.sample}_tagDirectory -style histone -nfr -o auto 
+    findPeaks results/{wildcards.sample}_tagDirectory -style super -L 0 -superSlope -1000 -o auto 
     """
