@@ -1,7 +1,7 @@
 import glob
 import os
 
-samples = ["SRR8134484", "SRR8134485"]
+samples = ["SRR8134484", "SRR8134485","SRR8134486","SRR8134487","SRR8134488","SRR8134489"]
 
 input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
@@ -24,8 +24,10 @@ rule all:
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
       "results/merged/merged.bam",
-      "results/tagDirectory/tagInfo.txt",
-      "results/tagDirectory/superEnhancers.txt",
+      expand("results/{sample}_tagDirectory",sample=samples),
+      expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/peaks.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/annotatedPeaks.txt",sample=samples),
 
 rule fraction:
    input:
@@ -49,7 +51,7 @@ rule fastp:
       """
       fastp -i {input.fq} \
       --adapter_fasta {adapter_path} \
-      -q 25 \
+      -q 25 -l 20 \
       -o {output.trimmed} \
       -h {output.html} \
       -j {output.json}
@@ -78,6 +80,7 @@ rule bwa:
      sam = "results/bwa/{sample}.sam",
      bam = "results/bwa/{sample}.bam",
      bam_rmdup = "results/bwa/{sample}_rmdup.bam",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      bwa aln {genome_index_dir} {input.fq} > {output.sai}
@@ -91,6 +94,7 @@ rule merge_bam:
      expand("results/bwa/{sample}_rmdup.bam",sample=samples),
    output:
      "results/merged/merged.bam",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      samtools merge {output} {input}
@@ -99,20 +103,25 @@ rule merge_bam:
 
 rule makeTagDirectory:
    input:
-     "results/bwa/merged.bam"
+     expand("results/bwa/{sample}_rmdup.bam",sample=samples),
    output:
-     "results/tagDirectory/tagInfo.txt",
+     expand("results/{sample}_tagDirectory",sample=samples),
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
-     makeTagDirectory results/tagDirectory {input}
+     makeTagDirectory {output} {input}
      """
 
 rule findPeaks:
   input:
-    "results/tagDirectory",
+    expand("results/{sample}_tagDirectory",sample=samples),
   output:
-    "results/tagDirectory/superEnhancers.txt",
+    enh = "results/{sample}_tagDirectory/superEnhancers.txt",
+    peaks = "results/{sample}_tagDirectory/regions.txt",
+    annotated = "results/{sample}_tagDirectory/annotatedPeaks.txt",
+  conda:"envs/preprocess_chipseq.yaml"
   shell:
     """
-    findPeaks {input} -style super -L 0 -superSlope -1000 -o auto
+    findPeaks {input} -style histone -nfr -o auto 
+    findPeaks {input} -style super -L 0 -superSlope -1000 -o auto 
     """
