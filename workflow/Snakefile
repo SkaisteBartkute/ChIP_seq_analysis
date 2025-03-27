@@ -7,6 +7,8 @@ input_path = "/scratch/lustre/home/skba0280/Epigenomics_raw_data"
 
 genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome/human_genome"
 
+genome_gff = "/scratch/lustre/home/skba0280/references/human_genome/Homo_sapiens.GRCh38.113.gff3"
+
 adapter_path = "/scratch/lustre/home/skba0280/references/adapters/adapters.fasta"
 
 rule all:
@@ -26,7 +28,11 @@ rule all:
       "results/merged/merged.bam",
       expand("results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
-      expand("results/{sample}_tagDirectory/regions.txt",sample=samples),      
+      expand("results/{sample}_tagDirectory/regions.txt",sample=samples),
+      "results/merged_tagDirectory/tagInfo.txt",
+      "results/merged_tagDirectory/superEnhancers.txt",
+      "results/merged_tagDirectory/regions.txt",
+      "results/merged_tagDirectory/annotated_peaks.txt",      
 
 rule fastp:
    input:
@@ -130,3 +136,29 @@ rule findPeaks:
     findPeaks results/{wildcards.sample}_tagDirectory -style histone -nfr -o auto 
     findPeaks results/{wildcards.sample}_tagDirectory -style super -L 0 -superSlope -1000 -o auto 
     """
+
+rule mergedMakeTagDirectory:
+   input:
+      bam = "results/merged/merged.bam",
+   output:
+      txt = "results/merged_tagDirectory/tagInfo.txt",
+   conda:"envs/preprocess_chipseq.yaml"
+   shell:
+      """
+      makeTagDirectory results/merged_tagDirectory {input.bam}
+      """
+
+rule mergedFindPeaks:
+   input:
+     tag = "results/merged_tagDirectory/tagInfo.txt",
+   output:
+     enh = "results/merged_tagDirectory/superEnhancers.txt",
+     peaks = "results/merged_tagDirectory/regions.txt",
+     annotated = "results/merged_tagDirectory/annotated_peaks.txt",
+   conda:"envs/preprocess_chipseq.yaml"
+   shell:
+     """
+     findPeaks results/merged_tagDirectory -style histone -nfr -o auto
+     findPeaks results/merged_tagDirectory -style super -L 0 -superSlope -1000 -o auto
+     annotatePeaks.pl {output.peaks} {genome_index_dir} -gff3 {genome_gff} > {output.annotated}
+     """
