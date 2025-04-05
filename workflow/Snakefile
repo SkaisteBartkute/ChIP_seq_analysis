@@ -35,6 +35,8 @@ rule all:
       "results/merged_tagDirectory/superEnhancers.txt",
       "results/merged_tagDirectory/regions.txt",
       "results/merged_tagDirectory/annotated_peaks.txt",
+      expand("results/{sample}_tagDirectory/regions.bed",sample=samples),
+      expand("results/{sample}_tagDirectory/superEnhancers.bed",sample=samples),
       "results/multiqc/multiqc_report.html",      
 
 rule fastp:
@@ -164,6 +166,19 @@ rule mergedFindPeaks:
      findPeaks results/merged_tagDirectory -style histone -nfr -o auto
      findPeaks results/merged_tagDirectory -style super -L 0 -superSlope -1000 -o auto
      annotatePeaks.pl {output.peaks} {genome_file} -gff3 {genome_gff} > {output.annotated}
+     """
+
+rule convertToBed:
+   input:
+     sample_regions = "results/{sample}_tagDirectory/regions.txt",
+     sample_enhancers = "results/{sample}_tagDirectory/superEnhancers.txt",
+   output:
+     sample_regions_bed = "results/{sample}_tagDirectory/regions.bed",
+     sample_enhancers_bed = "results/{sample}_tagDirectory/superEnhancers.bed",
+   shell:
+     """
+     pos2bed.pl {input.sample_regions} > {output.sample_regions_bed}
+     pos2bed.pl {input.sample_enhancers} > {output.sample_enhancers_bed}
      """
 
 rule multiqc:
