@@ -37,6 +37,8 @@ rule all:
       "results/merged_tagDirectory/annotated_peaks.txt",
       expand("results/{sample}_tagDirectory/regions.bed",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.bed",sample=samples),
+      "results/merged_tagDirectory/regions.bed",
+      "results/merged_tagDirectory/superEnhancers.bed",
       "results/multiqc/multiqc_report.html",      
 
 rule fastp:
@@ -179,6 +181,19 @@ rule convertToBed:
      """
      pos2bed.pl {input.sample_regions} > {output.sample_regions_bed}
      pos2bed.pl {input.sample_enhancers} > {output.sample_enhancers_bed}
+     """
+
+rule convertMergedToBed:
+   input:
+     merged_regions = "results/merged_tagDirectory/regions.txt",
+     merged_enhancers = "results/merged_tagDirectory/superEnhancers.txt",
+   output:
+     merged_regions_bed = "results/merged_tagDirectory/regions.bed",
+     merged_enhancers_bed = "results/merged_tagDirectory/superEnhancers.bed",
+   shell:
+     """
+     pos2bed.pl {input.merged_regions} > {output.merged_regions_bed}
+     pos2bed.pl {input.merged_enhancers} > {output.merged_enhancers_bed}
      """
 
 rule multiqc:
