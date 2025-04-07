@@ -24,6 +24,7 @@ rule all:
       expand("results/bwa/{sample}.sam",sample=samples),
       expand("results/bwa/{sample}.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
+      expand("results/bwa/{sample}_rmdup.flagstat",sample=samples),
       expand("results/bedGraph/{sample}.bedgraph",sample=samples),
       "results/merged/merged.bam",
       expand("results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
@@ -94,6 +95,18 @@ rule bwa:
      bwa samse {genome_index_dir} {output.sai} {input.fq} > {output.sam}
      samtools view -@ {threads} -F 0x04 -q 30 -b {output.sam} | samtools sort -@ {threads} -o {output.bam}
      samtools markdup -@ {threads} -r -s {output.bam} {output.bam_rmdup}
+     """
+
+rule flagstat:
+   input:
+     bam = "results/bwa/{sample}_rmdup.bam",
+   output:
+     flagstat = "results/bwa/{sample}_rmdup.flagstat",
+   conda:"envs/preprocess_chipseq.yaml"
+   threads:4
+   shell:
+     """
+     samtools flagstat -@ {threads} {input.bam} > {output.flagstat}
      """
 
 rule bedGraph:
@@ -179,6 +192,7 @@ rule convertToBed:
    output:
      sample_regions_bed = "results/{sample}_tagDirectory/regions.bed",
      sample_enhancers_bed = "results/{sample}_tagDirectory/superEnhancers.bed",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      pos2bed.pl {input.sample_regions} > {output.sample_regions_bed}
@@ -192,6 +206,7 @@ rule convertMergedToBed:
    output:
      merged_regions_bed = "results/merged_tagDirectory/regions.bed",
      merged_enhancers_bed = "results/merged_tagDirectory/superEnhancers.bed",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      pos2bed.pl {input.merged_regions} > {output.merged_regions_bed}
@@ -205,6 +220,7 @@ rule mergePeakFiles:
    output:
      merged_regions = "results/mergedPeaks/mergedRegions.txt",
      merged_enhancers = "results/mergedPeaks/mergedSuperEnhancers.txt",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      mergePeaks {input.regions} > {output.merged_regions}
@@ -218,6 +234,7 @@ rule convertMergedPeaksToBed:
    output:
      merged_regions_bed = "results/mergedPeaks/mergedRegions.bed",
      merged_enhancers_bed = "results/mergedPeaks/mergedSuperEnhancers.bed",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      pos2bed.pl {input.merged_regions} > {output.merged_regions_bed}
@@ -226,12 +243,15 @@ rule convertMergedPeaksToBed:
 
 rule multiqc:
    input:
+     expand("results/fastqc/{sample}_fastqc.zip",sample=samples),
      expand("results/fastqc/{sample}_trimmed_fastqc.zip",sample=samples),
+     expand("results/bwa/{sample}_rmdup.flagstat",sample=samples),
    output:
      "results/multiqc/multiqc_report.html",
    log:
      "logs/multiqc.log",
+   conda:"envs/preprocess_chipseq.yaml",
    shell:
      """
-     multiqc --outdir results/multiqc/ {input}
+     multiqc -s --force --outdir results/multiqc/ {input}
      """
