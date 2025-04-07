@@ -11,8 +11,6 @@ genome_file = "/scratch/lustre/home/skba0280/references/human_genome/Homo_sapien
 
 genome_gff = "/scratch/lustre/home/skba0280/references/human_genome/Homo_sapiens.GRCh38.113.gff3"
 
-adapter_path = "/scratch/lustre/home/skba0280/references/adapters/adapters.fasta"
-
 rule all:
    input:
       expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
@@ -41,6 +39,8 @@ rule all:
       "results/merged_tagDirectory/superEnhancers.bed",
       "results/mergedPeaks/mergedRegions.txt",
       "results/mergedPeaks/mergedSuperEnhancers.txt",
+      "results/mergedPeaks/mergedRegions.bed",
+      "results/mergedPeaks/mergedSuperEnhancers.bed",
       "results/multiqc/multiqc_report.html",      
 
 rule fastp:
@@ -209,6 +209,19 @@ rule mergePeakFiles:
      """
      mergePeaks {input.regions} > {output.merged_regions}
      mergePeaks {input.enhancers} > {output.merged_enhancers}
+     """
+
+rule convertMergedPeaksToBed:
+   input:
+     merged_regions = "results/mergedPeaks/mergedRegions.txt",
+     merged_enhancers = "results/mergedPeaks/mergedSuperEnhancers.txt",
+   output:
+     merged_regions_bed = "results/mergedPeaks/mergedRegions.bed",
+     merged_enhancers_bed = "results/mergedPeaks/mergedSuperEnhancers.bed",
+   shell:
+     """
+     pos2bed.pl {input.merged_regions} > {output.merged_regions_bed}
+     pos2bed.pl {input.merged_enhancers} > {output.merged_enhancers_bed}
      """
 
 rule multiqc:
