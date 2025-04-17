@@ -9,7 +9,7 @@ genome_index_dir = "/scratch/lustre/home/skba0280/references/human_genome/human_
 
 genome_file = "/scratch/lustre/home/skba0280/references/human_genome/Homo_sapiens.GRCh38.dna.toplevel.fa"
 
-genome_gff = "/scratch/lustre/home/skba0280/references/human_genome/gencode.v47.nochr.annotation.gff3"
+genome_gtf = "/scratch/lustre/home/skba0280/references/human_genome/gencode.v47.chr_patch_hapl_scaff_noprefix.annotation.gtf"
 
 rule all:
    input:
@@ -33,7 +33,6 @@ rule all:
       "results/merged_tagDirectory/tagInfo.txt",
       "results/merged_tagDirectory/superEnhancers.txt",
       "results/merged_tagDirectory/regions.txt",
-      "results/merged_tagDirectory/annotated_peaks.txt",
       expand("results/{sample}_tagDirectory/regions.bed",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.bed",sample=samples),
       "results/merged_tagDirectory/regions.bed",
@@ -182,13 +181,11 @@ rule mergedFindPeaks:
    output:
      enh = "results/merged_tagDirectory/superEnhancers.txt",
      peaks = "results/merged_tagDirectory/regions.txt",
-     annotated = "results/merged_tagDirectory/annotated_peaks.txt",
    conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      findPeaks results/merged_tagDirectory -style histone -nfr -o auto
      findPeaks results/merged_tagDirectory -style super -L 0 -superSlope -1000 -o auto
-     annotatePeaks.pl {output.peaks} {genome_file} -gff3 {genome_gff} > {output.annotated}
      """
 
 rule convertToBed:
@@ -256,8 +253,8 @@ rule annotatePeaksSamples:
      annotated_sample_enhancers = "results/{sample}_tagDirectory/{sample}_annotated_enhancers.txt",
    shell:
      """
-     annotatePeaks.pl {input.sample_regions} {genome_file} -gff3 {genome_gff} > {output.annotated_sample_regions}
-     annotatePeaks.pl {input.sample_enhancers} {genome_file} -gff3 {genome_gff} > {output.annotated_sample_enhancers}
+     annotatePeaks.pl {input.sample_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_sample_regions}
+     annotatePeaks.pl {input.sample_enhancers} {genome_file} -gtf {genome_gtf} > {output.annotated_sample_enhancers}
      """
 
 rule annotatePeaksMerged:
@@ -269,8 +266,8 @@ rule annotatePeaksMerged:
      annotated_merged_enhancers = "results/merged_tagDirectory/merged_annotated_enhancers.txt",
    shell:
      """
-     annotatePeaks.pl {input.merged_regions} {genome_file} -gff3 {genome_gff} > {output.annotated_merged_regions}
-     annotatePeaks.pl {input.merged_enhancers} {genome_file} -gff3 {genome_gff} > {output.annotated_merged_enhancers}
+     annotatePeaks.pl {input.merged_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_regions}
+     annotatePeaks.pl {input.merged_enhancers} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_enhancers}
      """
 
 rule annotateMergedPeaks:
@@ -282,8 +279,8 @@ rule annotateMergedPeaks:
      annotated_merged_peaks_enhancers = "results/mergedPeaks/merged_peaks_annotated_enhancers.txt",
    shell:
      """
-     annotatePeaks.pl {input.merged_peaks_regions} {genome_file} -gff3 {genome_gff} > {output.annotated_merged_peaks_regions}
-     annotatePeaks.pl {input.merged_peaks_enhancers} {genome_file} -gff3 {genome_gff} > {output.annotated_merged_peaks_enhancers}
+     annotatePeaks.pl {input.merged_peaks_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_peaks_regions}
+     annotatePeaks.pl {input.merged_peaks_enhancers} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_peaks_enhancers}
      """
      
 rule multiqc:
