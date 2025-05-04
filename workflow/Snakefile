@@ -11,6 +11,8 @@ genome_file = "/scratch/lustre/home/skba0280/references/human_genome/Homo_sapien
 
 genome_gtf = "/scratch/lustre/home/skba0280/references/human_genome/gencode.v47.chr_patch_hapl_scaff_noprefix.annotation.gtf"
 
+genome_blacklisted_regions = "/scratch/lustre/home/skba0280/references/human_genome/hg38-blacklist-genomic-regions.bed"
+
 rule all:
    input:
       expand("results/fastp/{sample}_trimmed.fastq",sample=samples),
@@ -26,13 +28,18 @@ rule all:
       expand("results/bwa/{sample}_rmdup.bam",sample=samples),
       expand("results/bwa/{sample}_rmdup.flagstat",sample=samples),
       expand("results/bedGraph/{sample}.bedgraph",sample=samples),
+      expand("results/bedGraph/{sample}_filtered.bedgraph",sample=samples),
       "results/merged/merged.bam",
       expand("results/{sample}_tagDirectory/tagInfo.txt",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
       expand("results/{sample}_tagDirectory/regions.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/regions_filtered.txt",sample=samples),
+      expand("results/{sample}_tagDirectory/superEnhancers_filtered.txt",sample=samples),
       "results/merged_tagDirectory/tagInfo.txt",
       "results/merged_tagDirectory/superEnhancers.txt",
       "results/merged_tagDirectory/regions.txt",
+      "results/merged_tagDirectory/regions_filtered.txt",
+      "results/merged_tagDirectory/superEnhancers_filtered.txt",
       expand("results/{sample}_tagDirectory/regions.bed",sample=samples),
       expand("results/{sample}_tagDirectory/superEnhancers.bed",sample=samples),
       "results/merged_tagDirectory/regions.bed",
@@ -127,6 +134,16 @@ rule bedGraph:
      bamCoverage --bam {input.bam} --outFileFormat bedgraph -o {output.bedGraph}
      """
 
+rule bedGraphFiltered:
+   input:
+     bedGraph = "results/bedGraph/{sample}.bedgraph",
+   output:
+     bedGraph_filtered = "results/bedGraph/{sample}_filtered.bedgraph",
+   shell:
+     """
+     bedtools intersect -v -a {input.bedGraph} -b {genome_blacklisted_regions} > {output.bedGraph_filtered}
+     """
+
 rule merge_bam:
    input:
      expand("results/bwa/{sample}_rmdup.bam",sample=samples),
@@ -160,8 +177,28 @@ rule findPeaks:
   conda:"envs/preprocess_chipseq.yaml"
   shell:
     """
-    findPeaks results/{wildcards.sample}_tagDirectory -style histone -nfr -o auto 
-    findPeaks results/{wildcards.sample}_tagDirectory -style super -L 0 -superSlope -1000 -o auto 
+    findPeaks results/{wildcards.sample}_tagDirectory -style histone -o auto 
+    findPeaks results/{wildcards.sample}_tagDirectory -style super -o auto 
+    """
+
+rule filterPeaks:
+  input:
+    regions = "results/{sample}_tagDirectory/regions.txt",
+    enhancers = "results/{sample}_tagDirectory/superEnhancers.txt",
+  output:
+    regions_filtered = "results/{sample}_tagDirectory/regions_filtered.txt",
+    enhancers_filtered = "results/{sample}_tagDirectory/superEnhancers_filtered.txt",
+  conda:"envs/preprocess_chipseq.yaml"
+  shell:
+    """
+    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > regions_ordered_v1.txt
+    awk 'NF==9' regions_ordered_v1.txt > regions_ordered.txt
+    bedtools intersect -v -a regions_ordered.txt -b {genome_blacklisted_regions} > regions_ordered_filtered.txt
+    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' regions_ordered_filtered.txt > {output.regions_filtered}
+    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > superEnhancers_ordered_v1.txt
+    awk 'NF==9' superEnhancers_ordered_v1.txt > superEnhancers_ordered.txt
+    bedtools intersect -v -a superEnhancers_ordered.txt -b {genome_blacklisted_regions} > superEnhancers_ordered_filtered.txt
+    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' superEnhancers_ordered_filtered.txt > {output.enhancers_filtered}
     """
 
 rule mergedMakeTagDirectory:
@@ -184,14 +221,34 @@ rule mergedFindPeaks:
    conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
-     findPeaks results/merged_tagDirectory -style histone -nfr -o auto
-     findPeaks results/merged_tagDirectory -style super -L 0 -superSlope -1000 -o auto
+     findPeaks results/merged_tagDirectory -style histone -o auto
+     findPeaks results/merged_tagDirectory -style super -o auto
      """
 
+rule filterMergedPeaks:
+   input:
+     regions= "results/merged_tagDirectory/regions.txt",
+     enhancers = "results/merged_tagDirectory/superEnhancers.txt",
+   output:
+     regions_filtered = "results/merged_tagDirectory/regions_filtered.txt",
+     enhancers_filtered = "results/merged_tagDirectory/superEnhancers_filtered.txt",
+   conda:"envs/preprocess_chipseq.yaml"
+   shell:
+     """
+     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > regions_ordered_v1.txt
+     awk 'NF==9' regions_ordered_v1.txt > regions_ordered.txt
+     bedtools intersect -v -a regions_ordered.txt -b {genome_blacklisted_regions} > regions_ordered_filtered.txt
+     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' regions_ordered_filtered.txt > {output.regions_filtered}
+     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > superEnhancers_ordered_v1.txt
+     awk 'NF==9' superEnhancers_ordered_v1.txt > superEnhancers_ordered.txt
+     bedtools intersect -v -a superEnhancers_ordered.txt -b {genome_blacklisted_regions} > superEnhancers_ordered_filtered.txt
+     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' superEnhancers_ordered_filtered.txt > {output.enhancers_filtered}
+     """
+     
 rule convertToBed:
    input:
-     sample_regions = "results/{sample}_tagDirectory/regions.txt",
-     sample_enhancers = "results/{sample}_tagDirectory/superEnhancers.txt",
+     sample_regions = "results/{sample}_tagDirectory/regions_filtered.txt",
+     sample_enhancers = "results/{sample}_tagDirectory/superEnhancers_filtered.txt",
    output:
      sample_regions_bed = "results/{sample}_tagDirectory/regions.bed",
      sample_enhancers_bed = "results/{sample}_tagDirectory/superEnhancers.bed",
@@ -204,8 +261,8 @@ rule convertToBed:
 
 rule convertMergedToBed:
    input:
-     merged_regions = "results/merged_tagDirectory/regions.txt",
-     merged_enhancers = "results/merged_tagDirectory/superEnhancers.txt",
+     merged_regions = "results/merged_tagDirectory/regions_filtered.txt",
+     merged_enhancers = "results/merged_tagDirectory/superEnhancers_filtered.txt",
    output:
      merged_regions_bed = "results/merged_tagDirectory/regions.bed",
      merged_enhancers_bed = "results/merged_tagDirectory/superEnhancers.bed",
@@ -218,8 +275,8 @@ rule convertMergedToBed:
 
 rule mergePeakFiles:
    input:
-     regions = expand("results/{sample}_tagDirectory/regions.txt",sample=samples),
-     enhancers = expand("results/{sample}_tagDirectory/superEnhancers.txt",sample=samples),
+     regions = expand("results/{sample}_tagDirectory/regions_filtered.txt",sample=samples),
+     enhancers = expand("results/{sample}_tagDirectory/superEnhancers_filtered.txt",sample=samples),
    output:
      merged_regions = "results/mergedPeaks/mergedRegions.txt",
      merged_enhancers = "results/mergedPeaks/mergedSuperEnhancers.txt",
@@ -246,8 +303,8 @@ rule convertMergedPeaksToBed:
 
 rule annotatePeaksSamples:
    input:
-     sample_regions = "results/{sample}_tagDirectory/regions.txt",
-     sample_enhancers = "results/{sample}_tagDirectory/superEnhancers.txt",
+     sample_regions = "results/{sample}_tagDirectory/regions_filtered.txt",
+     sample_enhancers = "results/{sample}_tagDirectory/superEnhancers_filtered.txt",
    output:
      annotated_sample_regions = "results/{sample}_tagDirectory/{sample}_annotated_regions.txt",
      annotated_sample_enhancers = "results/{sample}_tagDirectory/{sample}_annotated_enhancers.txt",
@@ -259,8 +316,8 @@ rule annotatePeaksSamples:
 
 rule annotatePeaksMerged:
    input:
-     merged_regions = "results/merged_tagDirectory/regions.txt",
-     merged_enhancers = "results/merged_tagDirectory/superEnhancers.txt",
+     merged_regions = "results/merged_tagDirectory/regions_filtered.txt",
+     merged_enhancers = "results/merged_tagDirectory/superEnhancers_filtered.txt",
    output:
      annotated_merged_regions = "results/merged_tagDirectory/merged_annotated_regions.txt",
      annotated_merged_enhancers = "results/merged_tagDirectory/merged_annotated_enhancers.txt",
