@@ -186,19 +186,33 @@ rule filterPeaks:
     regions = "results/{sample}_tagDirectory/regions.txt",
     enhancers = "results/{sample}_tagDirectory/superEnhancers.txt",
   output:
+    regions_ordered_v1 = "results/{sample}_tagDirectory/regions_ordered_v1.txt",
+    regions_ordered = "results/{sample}_tagDirectory/regions_ordered.txt",
+    regions_ordered_v2 = "results/{sample}_tagDirectory/regions_ordered_v2.txt",
+    regions_ordered_filtered = "results/{sample}_tagDirectory/regions_ordered_filtered.txt",
+    regions_ordered_filtered_v3 = "results/{sample}_tagDirectory/regions_ordered_filtered_v3.txt",
     regions_filtered = "results/{sample}_tagDirectory/regions_filtered.txt",
+    enhancers_ordered_v1 = "results/{sample}_tagDirectory/superEnhancers_ordered_v1.txt",
+    enhancers_ordered = "results/{sample}_tagDirectory/superEnhancers_ordered.txt",
+    enhancers_ordered_v2 = "results/{sample}_tagDirectory/superEnhancers_ordered_v2.txt",
+    enhancers_ordered_filtered = "results/{sample}_tagDirectory/superEnhancers_ordered_filtered.txt",
+    enhancers_ordered_filtered_v3 = "results/{sample}_tagDirectory/superEnhancers_ordered_filtered_v3.txt",
     enhancers_filtered = "results/{sample}_tagDirectory/superEnhancers_filtered.txt",
   conda:"envs/preprocess_chipseq.yaml"
   shell:
     """
-    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > regions_ordered_v1.txt
-    awk 'NF==9' regions_ordered_v1.txt > regions_ordered.txt
-    bedtools intersect -v -a regions_ordered.txt -b {genome_blacklisted_regions} > regions_ordered_filtered.txt
-    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' regions_ordered_filtered.txt > {output.regions_filtered}
-    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > superEnhancers_ordered_v1.txt
-    awk 'NF==9' superEnhancers_ordered_v1.txt > superEnhancers_ordered.txt
-    bedtools intersect -v -a superEnhancers_ordered.txt -b {genome_blacklisted_regions} > superEnhancers_ordered_filtered.txt
-    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' superEnhancers_ordered_filtered.txt > {output.enhancers_filtered}
+    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > {output.regions_ordered_v1}
+    awk 'NF==9' {output.regions_ordered_v1} > {output.regions_ordered}
+    awk 'BEGIN{{OFS="\t"}} {{$2 = $2-1;print}}' {output.regions_ordered} > {output.regions_ordered_v2}
+    bedtools intersect -v -a {output.regions_ordered_v2} -b {genome_blacklisted_regions} > {output.regions_ordered_filtered}
+    awk 'BEGIN{{OFS="\t"}} {{$2 = $2+1;print}}' {output.regions_ordered_filtered} > {output.regions_ordered_filtered_v3}
+    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' {output.regions_ordered_filtered_v3} > {output.regions_filtered}
+    awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > {output.enhancers_ordered_v1}
+    awk 'NF==9' {output.enhancers_ordered_v1} > {output.enhancers_ordered}
+    awk 'BEGIN{{OFS="\t"}} {{$2 = $2-1;print}}' {output.enhancers_ordered} > {output.enhancers_ordered_v2}
+    bedtools intersect -v -a {output.enhancers_ordered_v2} -b {genome_blacklisted_regions} > {output.enhancers_ordered_filtered}
+    awk 'BEGIN{{OFS="\t"}} {{$2 = $2+1;print}}' {output.enhancers_ordered_filtered} > {output.enhancers_ordered_filtered_v3}
+    awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' {output.enhancers_ordered_filtered_v3} > {output.enhancers_filtered}
     """
 
 rule mergedMakeTagDirectory:
@@ -230,19 +244,33 @@ rule filterMergedPeaks:
      regions= "results/merged_tagDirectory/regions.txt",
      enhancers = "results/merged_tagDirectory/superEnhancers.txt",
    output:
+     regions_ordered_v1 = "results/merged_tagDirectory/regions_ordered_v1.txt",
+     regions_ordered = "results/merged_tagDirectory/regions_ordered.txt",
+     regions_ordered_v2 = "results/merged_tagDirectory/regions_ordered_v2.txt",
+     regions_ordered_filtered = "results/merged_tagDirectory/regions_ordered_filtered.txt",
+     regions_ordered_filtered_v3 = "results/merged_tagDirectory/regions_ordered_filtered_v3.txt",
      regions_filtered = "results/merged_tagDirectory/regions_filtered.txt",
+     enhancers_ordered_v1 = "results/merged_tagDirectory/superEnhancers_ordered_v1.txt",
+     enhancers_ordered = "results/merged_tagDirectory/superEnhancers_ordered.txt",
+     enhancers_ordered_v2 = "results/merged_tagDirectory/superEnhancers_ordered_v2.txt",
+     enhancers_ordered_filtered = "results/merged_tagDirectory/superEnhancers_ordered_filtered.txt",
+     enhancers_ordered_filtered_v3 = "results/merged_tagDirectory/superEnhancers_ordered_filtered_v3.txt",
      enhancers_filtered = "results/merged_tagDirectory/superEnhancers_filtered.txt",
    conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
-     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > regions_ordered_v1.txt
-     awk 'NF==9' regions_ordered_v1.txt > regions_ordered.txt
-     bedtools intersect -v -a regions_ordered.txt -b {genome_blacklisted_regions} > regions_ordered_filtered.txt
-     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' regions_ordered_filtered.txt > {output.regions_filtered}
-     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > superEnhancers_ordered_v1.txt
-     awk 'NF==9' superEnhancers_ordered_v1.txt > superEnhancers_ordered.txt
-     bedtools intersect -v -a superEnhancers_ordered.txt -b {genome_blacklisted_regions} > superEnhancers_ordered_filtered.txt
-     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' superEnhancers_ordered_filtered.txt > {output.enhancers_filtered}
+     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.regions} > {output.regions_ordered_v1}
+     awk 'NF==9' {output.regions_ordered_v1} > {output.regions_ordered}
+     awk 'BEGIN{{OFS="\t"}} {{$2 = $2-1;print}}' {output.regions_ordered} > {output.regions_ordered_v2}
+     bedtools intersect -v -a {output.regions_ordered_v2} -b {genome_blacklisted_regions} > {output.regions_ordered_filtered}
+     awk 'BEGIN{{OFS="\t"}} {{$2 = $2+1;print}}' {output.regions_ordered_filtered} > {output.regions_ordered_filtered_v3}
+     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' {output.regions_ordered_filtered_v3} > {output.regions_filtered}
+     awk 'BEGIN{{OFS="\t"}} !/^#/ {{print $2, $3, $4, $5, $1, $6, $7, $8, $9}}' {input.enhancers} > {output.enhancers_ordered_v1}
+     awk 'NF==9' {output.enhancers_ordered_v1} > {output.enhancers_ordered}
+     awk 'BEGIN{{OFS="\t"}} {{$2 = $2-1;print}}' {output.enhancers_ordered} > {output.enhancers_ordered_v2}
+     bedtools intersect -v -a {output.enhancers_ordered_v2} -b {genome_blacklisted_regions} > {output.enhancers_ordered_filtered}
+     awk 'BEGIN{{OFS="\t"}} {{$2 = $2+1;print}}' {output.enhancers_ordered_filtered} > {output.enhancers_ordered_filtered_v3}
+     awk 'BEGIN{{OFS="\t"}} NF==9 {{print $5, $1, $2, $3, $4, $6, $7, $8, $9}}' {output.enhancers_ordered_filtered_v3} > {output.enhancers_filtered}
      """
      
 rule convertToBed:
