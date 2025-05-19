@@ -139,6 +139,7 @@ rule bedGraphFiltered:
      bedGraph = "results/bedGraph/{sample}.bedgraph",
    output:
      bedGraph_filtered = "results/bedGraph/{sample}_filtered.bedgraph",
+   conda: "envs/preprocess_chipseq.yaml"
    shell:
      """
      bedtools intersect -v -a {input.bedGraph} -b {genome_blacklisted_regions} > {output.bedGraph_filtered}
@@ -336,6 +337,7 @@ rule annotatePeaksSamples:
    output:
      annotated_sample_regions = "results/{sample}_tagDirectory/{sample}_annotated_regions.txt",
      annotated_sample_enhancers = "results/{sample}_tagDirectory/{sample}_annotated_enhancers.txt",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      annotatePeaks.pl {input.sample_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_sample_regions}
@@ -349,6 +351,7 @@ rule annotatePeaksMerged:
    output:
      annotated_merged_regions = "results/merged_tagDirectory/merged_annotated_regions.txt",
      annotated_merged_enhancers = "results/merged_tagDirectory/merged_annotated_enhancers.txt",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      annotatePeaks.pl {input.merged_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_regions}
@@ -362,6 +365,7 @@ rule annotateMergedPeaks:
    output:
      annotated_merged_peaks_regions = "results/mergedPeaks/merged_peaks_annotated_regions.txt",
      annotated_merged_peaks_enhancers = "results/mergedPeaks/merged_peaks_annotated_enhancers.txt",
+   conda:"envs/preprocess_chipseq.yaml"
    shell:
      """
      annotatePeaks.pl {input.merged_peaks_regions} {genome_file} -gtf {genome_gtf} > {output.annotated_merged_peaks_regions}
